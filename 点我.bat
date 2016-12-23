@@ -1,2 +1,2 @@
 rmdir /s/q JPG
-python test.py
+python avi2jpg.py
