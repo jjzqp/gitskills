@@ -682,7 +682,12 @@ int get_cdb_return_status(HANDLE h)
 // 1°¢≥ı ºªØﬂBΩ”
 extern "C" _declspec(dllexport) BOOL Init_Device(char *IDCode, u16 *iRet)
 {
-	bool ret = true;	    
+	bool ret = true;
+	
+		CString htmp;
+  	    htmp.Format("Init_Device");
+		AfxMessageBox(htmp);
+		return true;
 
 	HANDLE h = USB_GetZFY_Handle();
 	if ( h == NULL ) { 
@@ -690,9 +695,9 @@ extern "C" _declspec(dllexport) BOOL Init_Device(char *IDCode, u16 *iRet)
 		return false;
 	}
 
-//		CString htmp;
- // 	    htmp.Format("h == %d", h);
-//		AfxMessageBox(htmp);
+		//CString htmp;
+  	    //htmp.Format("h == %d", h);
+		//AfxMessageBox(htmp);
 
     BYTE tmp[512];
 
