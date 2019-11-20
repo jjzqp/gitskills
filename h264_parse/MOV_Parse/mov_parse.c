@@ -190,6 +190,9 @@ int main()
         free(buf);
         buf = NULL;
     }
+    if(video_chunk.stco_buf){
+        free(video_chunk.stco_buf);
+    }
 	if(f){
 		fclose(f);
 	}
