@@ -18,6 +18,7 @@ struct MY_MOV_CHUNK_T {
 	int moov_len;
     int aud_size;       //音频帧大小
     int aud_frame_number; //音频帧数量
+    int vid_fps;        //视频帧率
     int frame_number;   //视频帧数量
     int *vide_stco_buf; //视频索引buf
     int *soun_stco_buf; //音频索引buf
@@ -129,6 +130,36 @@ static int get_frame_by_chunk(FILE *f,int chunk_offset,unsigned char *buf)
 
     return -1;
 }
+static int __is_I_frame(FILE *f,int chunk_offset) 
+{
+    unsigned char cache[READ_SIZE];
+    int sps_len = 0;
+    int pps_len = 0;
+    if(!f){
+        printf("file is null!!!\n");
+        return -1;
+    }
+    fseek(f,chunk_offset,SEEK_SET);
+    fread(cache,READ_SIZE,1,f);
+    fseek(f,chunk_offset,SEEK_SET);
+    if((cache[0] == 0) && (cache[4] == 0x67)) {
+        //sps
+        printf("sps\n");
+        memcpy(&sps_len, &cache[0], 4);
+        sps_len = ntohl(sps_len);	
+        if ((cache[sps_len+4] == 0) && (cache[(sps_len+4)+4] == 0x68)) {
+            //pps
+            printf("pps\n");
+            memcpy(&pps_len, &cache[sps_len+4], 4);
+            pps_len = ntohl(pps_len);
+            if ((cache[(sps_len+4)+pps_len+4] == 0) && (cache[(sps_len+4)+pps_len+4+4] == 0x65)) {
+                printf("III\n");   
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
 int main()
 {	
 
@@ -151,6 +182,11 @@ int main()
     memcpy(&offset,p+4,4);
     offset = ntohl(offset);
     printf("offset:%x\n",offset);
+
+    //获取帧率
+    memcpy(&video_chunk.vid_fps,&cache[48],4);
+    /* video_chunk.aud_size = ntohl(video_chunk.aud_size); */
+    printf("video_chunk.vid_fps:%d\n",video_chunk.vid_fps);
 
     //获取音频帧大小
     memcpy(&video_chunk.aud_size,&cache[72],4);
@@ -220,9 +256,10 @@ int main()
         buf = NULL;
     }
     /**************重新排序视频帧和音频帧Offset**************/
+    int sec = 20;
     if(video_chunk.aud_size && video_chunk.soun_stco_buf) {
-        int x = 0;
-        int y = 0;
+        int x = video_chunk.frame_number - (sec * video_chunk.vid_fps);
+        int y = video_chunk.aud_frame_number - (sec * 2);
         int cnt;
         int total_frames_number = video_chunk.frame_number+video_chunk.aud_frame_number;
         video_chunk.frames_offset_buf = (int *)malloc(total_frames_number*4);
@@ -241,9 +278,13 @@ int main()
 
     //准备帧buffer
     buf = malloc(1024*1024);
-    for(i=0;i<video_chunk.frame_number+video_chunk.aud_frame_number;i++) {
-        len = get_frame_by_chunk(f,ntohl(video_chunk.frames_offset_buf[i]),buf);
-        /* change_buf_data(buf); */
+    for(i=0;i<((sec * video_chunk.vid_fps)+(sec * 2));i++) {
+        if(video_chunk.aud_size && video_chunk.soun_stco_buf) {
+            len = get_frame_by_chunk(f,ntohl(video_chunk.frames_offset_buf[i]),buf);
+        } else {
+            len = get_frame_by_chunk(f,ntohl(video_chunk.vide_stco_buf[i]),buf);
+        }
+        change_buf_data(buf);
         fwrite(buf,len,1,f_out);
     }
 	
