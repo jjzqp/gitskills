@@ -10,7 +10,7 @@
                   ((( unsigned int)(A) & 0x0000ff00) << 8)  | \
                   ((( unsigned int)(A) & 0x000000ff) << 24))
                   
-#define  CHANGE_264_DATA   
+//#define  CHANGE_264_DATA   
 
 int printf_buf(void *buf,int len)
 {
@@ -24,6 +24,7 @@ int printf_buf(void *buf,int len)
 
 int change_buf_data(unsigned char *buf)
 {
+#ifdef CHANGE_264_DATA
 	unsigned int change_data = 0x01000000;
  	unsigned int tmp, tmp2, tmp3;
     if (*((char *)(buf + 4)) == 0x67) {
@@ -37,7 +38,7 @@ int change_buf_data(unsigned char *buf)
     } else {
         memcpy(buf, &change_data, 4);
     }
-
+#endif
 	return 0;
 }
 int main()
@@ -65,7 +66,7 @@ int main()
 		//printf_buf(cache,READ_SIZE);
 		cnt++;
 		if(ret == 0){
-			printf("end\n");
+			printf("eend\n");
 			goto __END;
 			
 		}
@@ -73,6 +74,7 @@ int main()
         if ((cache[0] == 0) && (cache[4] == 0x41) && (cache[5] == 0x9a)) {
         	memcpy(&offset, &cache[0], 4);
         	offset = ntohl(offset);
+        	offset += 4;
         	printf(" %d | P frame   | %d \n",fnum,offset);
         	//fseek(f, offset-READ_SIZE, SEEK_CUR);
         	ret = fread(buf,offset,1,f);
@@ -86,64 +88,10 @@ int main()
         	change_buf_data(buf);
         	fnum++;
         	fwrite(buf,offset,1,f_out);
-#ifndef CHANGE_264_DATA
-        } else if ((cache[0] == 0) && (cache[4] == 0x67)) { 
-        	memcpy(&offset, &cache[0], 4);
-        	offset = ntohl(offset);
-	        printf(" %d | SPS frame | %d\n",fnum,offset);
-        	//fseek(f, offset, SEEK_CUR);	
-        	offset += 4;
-        	ret = fread(buf,offset,1,f);
-       		if(ret == 0){
-				printf("end\n");
-				goto __END;
-				
-			}
-        	cur_addr += offset;
-        	printf("cur_addr==%x\n",cur_addr);
-        	//change_buf_data(buf);
-        	fnum++;
-        } else if ((cache[0] == 0) && (cache[4] == 0x68)) { 
-        	memcpy(&offset, &cache[0], 4);
-        	offset = ntohl(offset);
-        	printf(" %d | PPS frame | %d\n",fnum,offset);
-        	//fseek(f, offset, SEEK_CUR);
-        	offset += 4;
-        	ret = fread(buf,offset,1,f);
-       		if(ret == 0){
-				printf("end\n");
-				goto __END;
-				
-			}
-        	cur_addr += offset;
-        	printf("cur_addr==%x\n",cur_addr);	
-        	
-        	//change_buf_data(buf);
-        	fnum++;
-
-        } else if ((cache[0] == 0) && (cache[4] == 0x65)) {
-
-       	    memcpy(&offset, &cache[0], 4);
-        	offset = ntohl(offset);
-        	printf(" %d | IDR frame | %d\n",fnum,offset);
-        	//fseek(f, offset, SEEK_CUR);
-        	ret = fread(buf,offset,1,f);
-       		if(ret == 0){
-				printf("end\n");
-				goto __END;
-				
-			}
-        	cur_addr += offset;
-        	printf("cur_addr==%x\n",cur_addr);
-        	//change_buf_data(buf);
-        	fnum++;
-        }
-#else 
         } else if ((cache[0] == 0) && (cache[4] == 0x67)) {
             //sps
             printf("sps\n");
             printf_buf(cache,32);
-            unsigned int tmp_addr = cur_addr;
             memcpy(&sps_len, &cache[0], 4);
             sps_len = ntohl(sps_len);	
             if ((cache[sps_len+4] == 0) && (cache[(sps_len+4)+4] == 0x68)) {
@@ -156,10 +104,10 @@ int main()
                     printf("III\n");   
                     memcpy(&offset, &cache[(sps_len+4)+pps_len+4], 4);                   
                     offset = ntohl(offset);                 
-                    flen = offset + sps_len + pps_len + 8;
+                    flen = offset + sps_len + pps_len + 12;
                     ret = fread(buf,flen,1,f);
                     cur_addr += flen;
-                    printf("cur_addr==%x\n",cur_addr);
+                    //printf("cur_addr==%x\n",cur_addr);
                        if(ret == 0){
                         printf("end\n");
                         goto __END;
@@ -171,9 +119,14 @@ int main()
             }
             
             fwrite(buf,flen,1,f_out);
+        } else if((cache[0] == 0x5A) && (cache[1] == 0x00)){
+        	
+         printf(" %d | sound     |  \n",fnum);
+         ret = fread(buf,0x2000,1,f);
+         cur_addr += 0x2000;
+
         }
 
-#endif
         }
 	
 __END:
