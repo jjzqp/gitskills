@@ -242,10 +242,68 @@ static int pcm_split(void)
     return 0;
 }
 
+
+/*
+ * pcm 数据处理:
+ * pcm 32 bit数据小端转大端 (数据处理需要:如音量调节,计算分贝数) 
+ */
+static int pcm_little_big(void)
+{ 
+    printf("%s\n",__FUNCTION__ );
+    char name_path[64];
+    char dst_name_path[128];
+    char tmp_name[64];
+    __find_pcm(name_path);
+    /* printf("%s\n",name_path); */
+	FILE *f = fopen(name_path,"rb");
+    if(!f){
+        printf("找不到 %s \n",name_path );
+        return -1;
+    }
+    strcpy(tmp_name,name_path);
+    memset(&tmp_name[strlen(tmp_name)-4],0,4);
+    sprintf(dst_name_path,"OutPut\\%s_big.pcm",tmp_name);
+	FILE *f_out = fopen(dst_name_path,"wb");;
+	unsigned char *buf = NULL;
+    unsigned char tmp[4];
+    int err = 0;
+    int i = 0;
+    int flen = 0;
+    memset(tmp,0,sizeof(tmp));
+    //读文件长度
+    flen = __file_len(f); 
+    buf = malloc(flen);
+    //读文件内容
+    fread(buf,flen,1,f);
+    /* printf("flen=%d\n",flen ); */
+    //计算
+    for(i=0;i<flen;i+=4) {
+        tmp[1] = buf[i];
+        tmp[2] = buf[i+1];
+        tmp[3] = buf[i+2];
+        memcpy(&buf[i],tmp,4);
+    }
+    fwrite(buf,flen,1,f_out);
+
+    free(buf);
+    fclose(f);
+    err = remove(name_path); 
+    printf(">>>>>err=%d\n",err);
+    if(err){
+        perror("remove");
+    }
+    fclose(f_out);
+    printf(">>>> ok >> %s\n",dst_name_path);
+
+    return 0;
+}
+
+/********** pcm相关处理函数集 **********/
 static struct my_fun_t my_func_test[] = {
     {"pcm 32 to 24bit Test",pcm_32_24},
     {"pcm 24 to 32bit Test",pcm_24_32},
     {"pcm split left&right",pcm_split},
+    {"pcm 32 bit little to big",pcm_little_big},
 }; 
 int main(int argc,char **argv)
 {
@@ -263,7 +321,6 @@ int main(int argc,char **argv)
     scanf("%d",&c);
     printf(">>%d\n",c);
     my_func_test[c-1].func();
-    system("pause");
 
     return 0;
 }

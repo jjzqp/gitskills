@@ -36,6 +36,7 @@ rebuild: veryclean everything
 clean :
 	rm -fr *.so
 	rm -fr *.o
+	rm -fr *.exe
     
 veryclean : clean
 	rm -fr $(TARGET)
