@@ -19,3 +19,6 @@ PCM 转换程序：
 1. windows软件支持24bit pcm的播放
 2. 32bit pcm转24bit，只需要取低24bit即可
 3. 24bit pcm转32bit，24bit补一个byte（0x00）即可
+
+## Circular_buf
+一个基于C语言循环buf的操作，可以移植linux
