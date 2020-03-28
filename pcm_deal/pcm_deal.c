@@ -168,10 +168,84 @@ static int pcm_24_32(void)
 }
 
 
+/*
+ * pcm 数据处理:
+ * pcm 数据分左右声道 
+ */
+static int pcm_split(void)
+{ 
+    printf("%s\n",__FUNCTION__ );
+    int data_bit = 0;
+    char name_path[64];
+    char dst_name_path[128];
+    char tmp_name[64];
+    printf("Please Input (24/32):");
+    scanf("%d",&data_bit);
+    int each_bits = data_bit / 8;
+    __find_pcm(name_path);
+    /* printf("%s\n",name_path); */
+	FILE *f = fopen(name_path,"rb");
+    if(!f){
+        printf("找不到 %s \n",name_path );
+        return -1;
+    }
+	FILE *f_l_out = NULL;
+	FILE *f_r_out = NULL;
+	unsigned char *src_buf = NULL;
+    int err = 0;
+    int i = 0;
+    int j = 0;
+    int k = 0;
+    int flen = 0;
+    //读文件长度
+    flen = __file_len(f); 
+    src_buf = malloc(flen);
+    //读文件内容
+    fread(src_buf,flen,1,f);
+
+    unsigned char *left_buf = malloc(flen/2);
+    unsigned char *right_buf = malloc(flen/2);
+    //分离
+    for(i=0;i<flen;i+=(each_bits*2)) {
+        //L
+        memcpy(&left_buf[j],&src_buf[i],each_bits);
+        j+=each_bits;
+        //R
+        memcpy(&right_buf[k],&src_buf[i+each_bits],each_bits);
+        k+=each_bits;
+    }
+     
+    strcpy(tmp_name,name_path);
+    memset(&tmp_name[strlen(tmp_name)-4],0,4);
+    sprintf(dst_name_path,"OutPut\\%s_l.pcm",tmp_name);
+	f_l_out = fopen(dst_name_path,"wb");;
+    fwrite(left_buf, flen/2,1,f_l_out);
+    printf(">>>> ok >> %s\n",dst_name_path);
+    fclose(f_l_out);
+
+    strcpy(tmp_name,name_path);
+    memset(&tmp_name[strlen(tmp_name)-4],0,4);
+    sprintf(dst_name_path,"OutPut\\%s_r.pcm",tmp_name);
+	f_r_out = fopen(dst_name_path,"wb");;
+    fwrite(right_buf,flen/2,1,f_r_out);
+    printf(">>>> ok >> %s\n",dst_name_path);
+    fclose(f_r_out);
+
+    free(src_buf);
+    free(left_buf);
+    free(right_buf);
+    fclose(f);
+    err = remove(name_path); 
+    if(err){
+        perror("remove");
+    }
+    return 0;
+}
 
 static struct my_fun_t my_func_test[] = {
     {"pcm 32 to 24bit Test",pcm_32_24},
     {"pcm 24 to 32bit Test",pcm_24_32},
+    {"pcm split left&right",pcm_split},
 }; 
 int main(int argc,char **argv)
 {
